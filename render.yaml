@@ -1,0 +1,40 @@
+# Render Blueprint: New > Blueprint > pick this repo. Creates the API and a PostgreSQL database.
+databases:
+  - name: vetri-db
+    plan: free
+    databaseName: vetri_bills
+
+services:
+  - type: web
+    name: vetri-bills-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: ./build.sh
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+    healthCheckPath: /api/categories/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vetri-db
+          property: connectionString
+      - key: SEED_DEMO
+        value: "1"
+      - key: MOCK_PAYMENTS
+        value: "1"
+      - key: RAZORPAY_KEY_ID
+        value: rzp_test_dummy
+      - key: RAZORPAY_KEY_SECRET
+        value: dummy_secret
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://vetri-bills.netlify.app
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://vetri-bills-api.onrender.com
