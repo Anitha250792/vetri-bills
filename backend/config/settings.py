@@ -115,7 +115,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+ON_VERCEL = bool(os.getenv("VERCEL"))
+# Vercel's disk is read-only except /tmp. Bills are rebuilt on demand, so temporary storage is fine.
+MEDIA_ROOT = Path("/tmp/media") if ON_VERCEL else BASE_DIR / "media"
+WHITENOISE_USE_FINDERS = True  # serve admin CSS straight from the packages, no collectstatic needed
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},

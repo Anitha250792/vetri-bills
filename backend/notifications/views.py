@@ -92,3 +92,21 @@ class ExpiryStockReportView(APIView):
             "expiring_soon": BatchReportSerializer(soon, many=True).data,
             "low_stock": LowStockReportSerializer(low, many=True).data,
         })
+
+
+class DailyCheckCronView(APIView):
+    """Called once a day by Vercel Cron (which sends `Authorization: Bearer $CRON_SECRET`)."""
+
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(exclude=True)
+    def get(self, request):
+        import os
+
+        secret = os.getenv("CRON_SECRET", "")
+        if not secret or request.headers.get("Authorization") != f"Bearer {secret}":
+            return Response({"detail": "Forbidden"}, status=403)
+        from .services import run_daily_checks
+
+        return Response({"detail": "ok", "result": str(run_daily_checks())})
