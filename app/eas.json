@@ -4,11 +4,11 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://vetri-bills-api.onrender.com" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://vetri-bills.vercel.app" }
     },
     "production": {
       "android": { "buildType": "app-bundle" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://vetri-bills-api.onrender.com" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://vetri-bills.vercel.app" }
     }
   }
 }

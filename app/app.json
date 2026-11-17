@@ -45,6 +45,17 @@
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "1c8b219e-3682-4e9f-a465-69cb60dfe3a6"
+      }
+    },
+    "owner": "anitha2507"
   }
 }
