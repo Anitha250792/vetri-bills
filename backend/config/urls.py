@@ -1,3 +1,5 @@
+import re
+
 from django.conf import settings
 from django.contrib import admin
 from django.http import Http404
@@ -8,10 +10,14 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 def product_image(request, path):
     """Product pictures: uploaded ones first, then the pictures bundled with the code."""
-    for root in (settings.MEDIA_ROOT / "products", settings.BASE_DIR / "media" / "products",
-                 settings.BASE_DIR / "assets" / "product_images"):
-        if (root / path).is_file():
-            return serve(request, path, document_root=root)
+    roots = (settings.MEDIA_ROOT / "products", settings.BASE_DIR / "media" / "products",
+             settings.BASE_DIR / "assets" / "product_images")
+    # Django adds a random suffix when a file name is used twice (VB-0017_ab12cd.png): fall back to the plain name.
+    plain = re.sub(r"_[A-Za-z0-9]{7}(?=\.\w+$)", "", path)
+    for name in (path, plain):
+        for root in roots:
+            if (root / name).is_file():
+                return serve(request, name, document_root=root)
     raise Http404
 
 
