@@ -20,7 +20,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "single",
@@ -32,7 +35,12 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-image-picker", { "photosPermission": "Vetri Bills needs your photos so you can choose product pictures." }],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Vetri Bills needs your photos so you can choose product pictures."
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -46,6 +54,16 @@
     "experiments": {
       "typedRoutes": false,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "1c8b219e-3682-4e9f-a465-69cb60dfe3a6"
+      }
     }
   }
 }
