@@ -1,4 +1,7 @@
+from django.http import Http404, HttpResponse
 from django.db.models import Count, Q
+from drf_spectacular.utils import extend_schema
+from rest_framework.views import APIView
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions
 
@@ -41,7 +44,7 @@ class ProductListView(generics.ListAPIView):
     ordering_fields = ["price", "name", "created_at"]
 
     def get_queryset(self):
-        return Product.objects.filter(is_active=True).select_related("category")
+        return Product.objects.filter(is_active=True).select_related("category").defer("image_data")
 
 
 class ProductDetailView(generics.RetrieveAPIView):
@@ -50,4 +53,20 @@ class ProductDetailView(generics.RetrieveAPIView):
     lookup_field = "pk"
 
     def get_queryset(self):
-        return Product.objects.filter(is_active=True).select_related("category")
+        return Product.objects.filter(is_active=True).select_related("category").defer("image_data")
+
+
+class ProductImageView(APIView):
+    """GET /api/products/<id>/image/ : the picture an admin uploaded (cached by ?v=version)."""
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    @extend_schema(exclude=True)
+    def get(self, request, pk):
+        product = Product.objects.filter(pk=pk).only("image_data", "image_version").first()
+        if not product or not product.image_data:
+            raise Http404
+        response = HttpResponse(bytes(product.image_data), content_type="image/jpeg")
+        response["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response

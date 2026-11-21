@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthContext';
 import { AppHeader } from '@/components/AppHeader';
@@ -13,6 +13,7 @@ import { expiryInfo, shortDate } from '@/lib/format';
 import { confirm, notify } from '@/lib/notify';
 import { useCategories } from '@/lib/queries';
 import type { AdminBatch, AdminProduct } from '@/lib/types';
+import { pickImage, removeProductImage, uploadProductImage, type PickedImage } from '@/lib/uploadImage';
 import { colors, radius, shadow } from '@/theme';
 
 const num = (s: string) => (s.trim() === '' ? NaN : Number(s));
@@ -41,6 +42,8 @@ export default function AdminProductScreen() {
   const [qty, setQty] = useState('');
   const [expiry, setExpiry] = useState('');
   const [editingBatch, setEditingBatch] = useState<AdminBatch | null>(null);
+  const [picked, setPicked] = useState<PickedImage | null>(null); // chosen for a new product, uploaded on save
+  const [savingImage, setSavingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingBatch, setSavingBatch] = useState(false);
 
@@ -91,6 +94,39 @@ export default function AdminProductScreen() {
     setEditingBatch(null);
   };
 
+  const choosePicture = async () => {
+    try {
+      const image = await pickImage();
+      if (!image) return;
+      if (isNew) return setPicked(image);
+      setSavingImage(true);
+      await uploadProductImage(String(id), image);
+      await refresh();
+      notify('Picture saved', 'The new picture is now in the shop.');
+    } catch (e) {
+      notify('Could not use that picture', errorMessage(e));
+    } finally {
+      setSavingImage(false);
+    }
+  };
+
+  const deletePicture = async () => {
+    if (isNew) return setPicked(null);
+    if (!(await confirm('Remove picture?', 'The product will show without a picture.', 'Remove'))) return;
+    setSavingImage(true);
+    try {
+      await removeProductImage(String(id));
+      setImageUrl('');
+      await refresh();
+    } catch (e) {
+      notify('Could not remove', errorMessage(e));
+    } finally {
+      setSavingImage(false);
+    }
+  };
+
+  const previewUri = picked?.uri ?? product.data?.image ?? (imageUrl.trim() || null);
+
   const saveProduct = async () => {
     if (!name.trim()) return notify('Name needed', 'Enter the product name.');
     if (!category) return notify('Category needed', 'Choose a category.');
@@ -119,6 +155,13 @@ export default function AdminProductScreen() {
     try {
       if (isNew) {
         const { data } = await api.post<AdminProduct>('/admin/products/', body);
+        if (picked) {
+          try {
+            await uploadProductImage(data.id, picked);
+          } catch (e) {
+            notify('Product added, picture not saved', `${errorMessage(e)} Open the product and choose the picture again.`);
+          }
+        }
         await refresh();
         notify('Product added', `${data.name} is in the shop. Stock and expiry alerts are updated.`);
         router.replace({ pathname: '/admin/product/[id]', params: { id: String(data.id) } });
@@ -186,6 +229,31 @@ export default function AdminProductScreen() {
         ) : null}
 
         <SectionTitle>Product details</SectionTitle>
+        <Text style={styles.label}>Product picture</Text>
+        <View style={styles.pictureRow}>
+          {previewUri ? (
+            <Image source={{ uri: previewUri }} style={styles.picture} />
+          ) : (
+            <View style={[styles.picture, styles.pictureEmpty]}>
+              <Ionicons name="image-outline" size={34} color={colors.muted} />
+            </View>
+          )}
+          <View style={{ flex: 1, gap: 8 }}>
+            <Button
+              title={previewUri ? 'Change picture' : 'Choose picture'}
+              icon="images-outline"
+              variant="secondary"
+              small
+              busy={savingImage}
+              onPress={choosePicture}
+            />
+            {picked || product.data?.image ? (
+              <Button title="Remove picture" icon="trash-outline" variant="danger" small onPress={deletePicture} />
+            ) : null}
+            <Text style={styles.help}>Pick a photo from your phone or computer.</Text>
+          </View>
+        </View>
+        <View style={{ height: 14 }} />
         <Field label="Product name" value={name} onChangeText={setName} placeholder="e.g. Fresh Curd 400g" />
         <Text style={styles.label}>Category</Text>
         <View style={styles.chips}>
@@ -210,7 +278,6 @@ export default function AdminProductScreen() {
             <Field label="Low stock alert at" value={threshold} onChangeText={setThreshold} keyboardType="number-pad" placeholder="10" />
           </View>
         </View>
-        <Field label="Picture link (optional)" value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" keyboardType="url" placeholder="https://..." />
         <Field label="Description" value={description} onChangeText={setDescription} multiline placeholder="Short description" />
         {!isNew ? (
           <View style={[styles.row, { alignItems: 'center', marginBottom: 14 }]}>
@@ -289,6 +356,9 @@ export default function AdminProductScreen() {
 }
 
 const styles = StyleSheet.create({
+  pictureRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  picture: { width: 104, height: 104, borderRadius: radius.md, backgroundColor: '#F0F3EE' },
+  pictureEmpty: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' },
   label: { fontSize: 13, fontWeight: '700', color: colors.navy, marginBottom: 6 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   row: { flexDirection: 'row', gap: 12 },

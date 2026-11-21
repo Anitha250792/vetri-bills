@@ -4,6 +4,11 @@ from rest_framework import serializers
 from .models import Category, Product, ProductBatch
 
 
+def product_image_url(product, request=None):
+    path = f"/api/products/{product.pk}/image/?v={product.image_version}"
+    return request.build_absolute_uri(path) if request else path
+
+
 class CategorySerializer(serializers.ModelSerializer):
     product_count = serializers.IntegerField(read_only=True)
 
@@ -30,6 +35,8 @@ class _ProductBase(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.URLField(allow_null=True))
     def get_image(self, obj):
+        if obj.image_version:
+            return product_image_url(obj, self.context.get("request"))
         if obj.image:
             request = self.context.get("request")
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url

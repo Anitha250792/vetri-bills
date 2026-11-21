@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import Category, Product, ProductBatch
+from .serializers import product_image_url
 from .signals import stock_changed
 
 
@@ -73,6 +74,8 @@ class AdminProductSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.URLField(allow_null=True))
     def get_image(self, obj):
+        if obj.image_version:
+            return product_image_url(obj, self.context.get("request"))
         if obj.image:
             request = self.context.get("request")
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url

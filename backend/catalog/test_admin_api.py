@@ -115,3 +115,51 @@ class AdminProductApiTests(APITestCase):
         self.client.delete(f"/api/admin/products/{pid}/")
         self.assertEqual(len(self.client.get("/api/admin/products/?search=curd").data), 1)
         self.assertEqual(len(self.client.get("/api/admin/products/?is_active=1").data), 0)
+
+
+class AdminImageUploadTests(AdminProductApiTests):
+    def make_png(self, size=(1600, 1200)):
+        import io
+
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.new("RGBA", size, (200, 30, 30, 255)).save(buf, "PNG")
+        buf.seek(0)
+        buf.name = "photo.png"
+        return buf
+
+    def test_admin_uploads_picture_and_public_sees_it(self):
+        pid = self.new_product().data["id"]
+        res = self.client.post(f"/api/admin/products/{pid}/image/", {"image": self.make_png()}, format="multipart")
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertIn(f"/api/products/{pid}/image/?v=1", res.data["image"])
+        self.client.force_authenticate(None)
+        shop = self.client.get(f"/api/products/{pid}/")
+        self.assertIn("/image/?v=1", shop.data["image"])
+        pic = self.client.get(f"/api/products/{pid}/image/")
+        self.assertEqual(pic.status_code, 200)
+        self.assertEqual(pic["Content-Type"], "image/jpeg")
+        from PIL import Image
+        import io
+
+        self.assertLessEqual(max(Image.open(io.BytesIO(pic.content)).size), 800)  # resized
+
+    def test_replace_bumps_version_and_delete_removes(self):
+        pid = self.new_product().data["id"]
+        self.client.post(f"/api/admin/products/{pid}/image/", {"image": self.make_png()}, format="multipart")
+        res = self.client.post(f"/api/admin/products/{pid}/image/", {"image": self.make_png((300, 300))}, format="multipart")
+        self.assertIn("?v=2", res.data["image"])
+        self.assertEqual(self.client.delete(f"/api/admin/products/{pid}/image/").status_code, 200)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(f"/api/products/{pid}/image/").status_code, 404)
+
+    def test_bad_file_and_permissions(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        pid = self.new_product().data["id"]
+        bad = SimpleUploadedFile("x.png", b"not a picture", content_type="image/png")
+        self.assertEqual(self.client.post(f"/api/admin/products/{pid}/image/", {"image": bad}, format="multipart").status_code, 400)
+        self.assertEqual(self.client.post(f"/api/admin/products/{pid}/image/", {}, format="multipart").status_code, 400)
+        self.client.force_authenticate(self.customer)
+        self.assertEqual(self.client.post(f"/api/admin/products/{pid}/image/", {"image": self.make_png()}, format="multipart").status_code, 403)

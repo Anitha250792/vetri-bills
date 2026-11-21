@@ -35,6 +35,9 @@ class Product(models.Model):
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to="products/", blank=True)
     image_url = models.URLField(blank=True, help_text="Use instead of an upload (e.g. seed data)")
+    # Picture chosen by the shop admin in the app. Kept in the database because the hosting disk is temporary.
+    image_data = models.BinaryField(null=True, blank=True, editable=False)
+    image_version = models.PositiveIntegerField(default=0, editable=False)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     tax_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)

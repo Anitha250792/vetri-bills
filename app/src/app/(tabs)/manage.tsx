@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -50,6 +50,7 @@ export default function Manage() {
                 onPress={() => router.push({ pathname: '/admin/product/[id]', params: { id: String(p.id) } })}
                 style={[styles.card, shadow, !p.is_active && { opacity: 0.6 }]}
               >
+                {p.image ? <Image source={{ uri: p.image }} style={styles.thumb} /> : <View style={styles.thumb} />}
                 <View style={{ flex: 1, gap: 4 }}>
                   <Text style={styles.name} numberOfLines={1}>
                     {p.name}
@@ -92,6 +93,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 15, color: colors.text },
   card: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.card, borderRadius: radius.lg, padding: 14 },
+  thumb: { width: 54, height: 54, borderRadius: radius.md, backgroundColor: '#F0F3EE' },
   name: { fontSize: 16, fontWeight: '800', color: colors.navy },
   sub: { color: colors.muted, fontSize: 13 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
