@@ -25,6 +25,7 @@ export default function RootLayout() {
             <Stack.Screen name="order/[id]" />
             <Stack.Screen name="orders" />
             <Stack.Screen name="bills" />
+            <Stack.Screen name="admin/product/[id]" />
           </Stack>
         </AuthProvider>
       </QueryClientProvider>

@@ -43,7 +43,10 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: icon('home', 'home-outline') }} />
-      <Tabs.Screen name="wishlist" options={{ title: 'Wishlist', tabBarIcon: icon('heart', 'heart-outline') }} />
+      <Tabs.Screen
+        name="wishlist"
+        options={{ title: 'Wishlist', href: isAdmin ? null : undefined, tabBarIcon: icon('heart', 'heart-outline') }}
+      />
       <Tabs.Screen
         name="cart"
         options={{
@@ -64,6 +67,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="report"
         options={{ title: 'Stock', href: isAdmin ? undefined : null, tabBarIcon: icon('stats-chart', 'stats-chart-outline') }}
+      />
+      <Tabs.Screen
+        name="manage"
+        options={{ title: 'Products', href: isAdmin ? undefined : null, tabBarIcon: icon('cube', 'cube-outline') }}
       />
       <Tabs.Screen name="account" options={{ title: 'Account', tabBarIcon: icon('person', 'person-outline') }} />
     </Tabs>

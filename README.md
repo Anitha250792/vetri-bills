@@ -113,3 +113,8 @@ Test login: customer `demo` / `Demo@12345`, admin `admin` / `Admin@12345`.
 - `python manage.py fetch_product_images`: real photos from Wikipedia (needs internet; `--force` to redo).
 - Replace any picture by hand in Django admin > Products > Image.
 - Bill PDF is now a premium tax invoice (header band, PAID badge, QR, CGST/SGST split).
+
+## Admin: products, stock and expiry (in the app)
+Log in as admin > **Products** tab > Add product (with first stock and expiry date), edit details, add or edit stock batches.
+Every change updates the Alerts and Stock tabs, and sends a push alert to admin phones.
+API: `/api/admin/products/`, `/api/admin/products/{id}/batches/`, `/api/admin/batches/{id}/` (admin only).

@@ -120,3 +120,33 @@ export type ExpiryReport = {
   expiring_soon: ReportBatch[];
   low_stock: ReportLowStock[];
 };
+
+// ---- shop admin ----------------------------------------------------------------
+export type AdminProduct = {
+  id: number;
+  name: string;
+  sku: string;
+  category: number;
+  category_name: string;
+  description: string;
+  image_url: string;
+  image: string | null;
+  price: string;
+  mrp: string | null;
+  tax_percent: string;
+  low_stock_threshold: number;
+  is_active: boolean;
+  stock_qty: number;
+  is_low_stock: boolean;
+  nearest_expiry: string | null;
+  batch_count: number;
+};
+
+export type AdminBatch = {
+  id: number;
+  batch_no: string;
+  qty: number;
+  expiry_date: string;
+  received_on: string;
+  days_to_expiry: number;
+};
