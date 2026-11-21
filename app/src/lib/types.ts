@@ -40,7 +40,7 @@ export type ProductDetail = Product & {
 };
 
 export type CartItem = { id: number; product: Product; quantity: number; line_total: string };
-export type Cart = { items: CartItem[]; item_count: number; total: string };
+export type Cart = { items: CartItem[]; item_count: number; subtotal: string; tax_total: string; total: string };
 
 export type WishlistEntry = { id: number; product: Product; added_at: string };
 

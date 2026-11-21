@@ -163,7 +163,7 @@ class LowStockAlertTests(AlertTestBase):
 
         cart = Cart.objects.create(user=self.customer)
         CartItem.objects.create(cart=cart, product=p, quantity=6)
-        order = order_services.create_order_from_cart(self.customer)
+        order = order_services.create_order_from_cart(self.customer, "12 Main St, Tambaram, Chennai 600045")
         payment = order_services.create_payment(order)
         order_services.complete_payment(payment, "pay_1", "sig")
 

@@ -16,6 +16,9 @@ from .models import Bill, Order
 MEDIA = tempfile.mkdtemp()
 
 
+ADDR = {"shipping_address": "12 Main St, Tambaram, Chennai 600045"}
+
+
 @override_settings(MEDIA_ROOT=MEDIA, MOCK_PAYMENTS=True)
 class PurchaseFlowTests(APITestCase):
     @classmethod
@@ -44,7 +47,7 @@ class PurchaseFlowTests(APITestCase):
 
     def pay(self):
         """checkout -> mock pay -> verify. Returns the verify response."""
-        checkout = self.client.post(reverse("checkout"), {"shipping_address": "12 Main St, Tambaram"})
+        checkout = self.client.post(reverse("checkout"), ADDR)
         self.assertEqual(checkout.status_code, 201, checkout.data)
         rp_order = checkout.data["payment"]["razorpay_order_id"]
         proof = self.client.post(reverse("payment-mock"), {"razorpay_order_id": rp_order}).data
@@ -57,7 +60,9 @@ class PurchaseFlowTests(APITestCase):
         self.assertEqual(r.data["item_count"], 5)
         r = self.client.patch(reverse("cart-item", args=[self.milk.pk]), {"quantity": 1})
         self.assertEqual(r.data["item_count"], 1)
-        self.assertEqual(Decimal(r.data["total"]), Decimal("105.00"))
+        self.assertEqual(Decimal(r.data["subtotal"]), Decimal("105.00"))
+        self.assertEqual(Decimal(r.data["tax_total"]), Decimal("5.25"))
+        self.assertEqual(Decimal(r.data["total"]), Decimal("110.25"))
         r = self.client.delete(reverse("cart-item", args=[self.milk.pk]))
         self.assertEqual(r.data["items"], [])
 
@@ -83,7 +88,7 @@ class PurchaseFlowTests(APITestCase):
 
     # ---- checkout & payment ---------------------------------------------
     def test_empty_cart_cannot_checkout(self):
-        self.assertEqual(self.client.post(reverse("checkout")).status_code, 400)
+        self.assertEqual(self.client.post(reverse("checkout"), ADDR).status_code, 400)
 
     def test_full_purchase_flow(self):
         self.add(self.milk, 4)  # 3 from OLD batch, 1 from NEW (earliest expiry first)
@@ -93,10 +98,10 @@ class PurchaseFlowTests(APITestCase):
 
         order = verify.data["order"]
         self.assertEqual(order["status"], "paid")
-        # 4 x 105 + 2 x 50 = 520 incl. tax; tax = 420*5/105 + 100*18/118
-        self.assertEqual(Decimal(order["total"]), Decimal("520.00"))
-        self.assertEqual(Decimal(order["tax_total"]), Decimal("35.25"))
-        self.assertEqual(Decimal(order["subtotal"]), Decimal("484.75"))
+        # Prices are before tax: subtotal 4x105 + 2x50 = 520; tax = 420*5% + 100*18% = 21 + 18 = 39
+        self.assertEqual(Decimal(order["subtotal"]), Decimal("520.00"))
+        self.assertEqual(Decimal(order["tax_total"]), Decimal("39.00"))
+        self.assertEqual(Decimal(order["total"]), Decimal("559.00"))  # subtotal + tax
 
         self.old.refresh_from_db(); self.new.refresh_from_db()
         self.assertEqual((self.old.qty, self.new.qty), (0, 9))
@@ -104,9 +109,22 @@ class PurchaseFlowTests(APITestCase):
         self.assertEqual((self.milk.stock_qty, self.soap.stock_qty), (9, 3))
         self.assertEqual(self.client.get(reverse("cart")).data["items"], [])  # cart cleared
 
+    def test_address_is_mandatory_at_checkout(self):
+        self.add(self.milk, 1)
+        for body in ({}, {"shipping_address": ""}, {"shipping_address": "   "}, {"shipping_address": "abc"}):
+            r = self.client.post(reverse("checkout"), body)
+            self.assertEqual(r.status_code, 400, body)
+        self.assertEqual(Order.objects.count(), 0)
+
+    def test_payment_amount_matches_bill_total(self):
+        self.add(self.soap, 3)  # 150 + 18% = 177
+        checkout, verify = self.pay()
+        self.assertEqual(checkout.data["payment"]["amount"], 17700)
+        self.assertEqual(Decimal(verify.data["order"]["total"]), Decimal("177.00"))
+
     def test_bad_signature_is_rejected_and_stock_untouched(self):
         self.add(self.milk, 1)
-        checkout = self.client.post(reverse("checkout"))
+        checkout = self.client.post(reverse("checkout"), ADDR)
         r = self.client.post(reverse("payment-verify"), {
             "razorpay_order_id": checkout.data["payment"]["razorpay_order_id"],
             "razorpay_payment_id": "pay_fake", "razorpay_signature": "0" * 64,
@@ -118,7 +136,7 @@ class PurchaseFlowTests(APITestCase):
 
     def test_verify_twice_does_not_deduct_twice(self):
         self.add(self.milk, 2)
-        checkout = self.client.post(reverse("checkout"))
+        checkout = self.client.post(reverse("checkout"), ADDR)
         rp = checkout.data["payment"]["razorpay_order_id"]
         proof = self.client.post(reverse("payment-mock"), {"razorpay_order_id": rp}).data
         self.assertEqual(self.client.post(reverse("payment-verify"), proof).status_code, 200)
@@ -129,7 +147,7 @@ class PurchaseFlowTests(APITestCase):
 
     def test_stock_sold_out_between_checkout_and_payment(self):
         self.add(self.milk, 10)
-        checkout = self.client.post(reverse("checkout"))
+        checkout = self.client.post(reverse("checkout"), ADDR)
         ProductBatch.objects.filter(product=self.milk).update(qty=0)  # someone else bought it all
         self.milk.recalc_stock()
         rp = checkout.data["payment"]["razorpay_order_id"]
@@ -143,7 +161,7 @@ class PurchaseFlowTests(APITestCase):
         self.add(self.soap, 5)
         ProductBatch.objects.filter(product=self.soap).update(qty=2)
         self.soap.recalc_stock()
-        r = self.client.post(reverse("checkout"))
+        r = self.client.post(reverse("checkout"), ADDR)
         self.assertEqual(r.status_code, 400)
         self.assertEqual(r.data["items"][0]["available"], 2)
 
@@ -154,7 +172,7 @@ class PurchaseFlowTests(APITestCase):
 
     def test_cannot_verify_someone_elses_payment(self):
         self.add(self.milk, 1)
-        checkout = self.client.post(reverse("checkout"))
+        checkout = self.client.post(reverse("checkout"), ADDR)
         rp = checkout.data["payment"]["razorpay_order_id"]
         self.client.force_authenticate(self.other)
         r = self.client.post(reverse("payment-verify"), {
@@ -163,8 +181,8 @@ class PurchaseFlowTests(APITestCase):
 
     def test_new_checkout_cancels_old_pending_order(self):
         self.add(self.milk, 1)
-        first = self.client.post(reverse("checkout")).data["order"]["id"]
-        self.client.post(reverse("checkout"))
+        first = self.client.post(reverse("checkout"), ADDR).data["order"]["id"]
+        self.client.post(reverse("checkout"), ADDR)
         self.assertEqual(Order.objects.get(pk=first).status, "cancelled")
 
     # ---- bills ------------------------------------------------------------
@@ -201,7 +219,7 @@ class PurchaseFlowTests(APITestCase):
 
     def test_mock_pay_disabled_when_not_in_mock_mode(self):
         self.add(self.milk, 1)
-        checkout = self.client.post(reverse("checkout"))
+        checkout = self.client.post(reverse("checkout"), ADDR)
         with self.settings(MOCK_PAYMENTS=False):
             r = self.client.post(reverse("payment-mock"),
                                  {"razorpay_order_id": checkout.data["payment"]["razorpay_order_id"]})

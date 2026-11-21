@@ -5,6 +5,8 @@ from rest_framework import serializers
 
 from catalog.serializers import ProductListSerializer
 
+from .services import line_tax, money
+
 from .models import Bill, Cart, CartItem, Order, OrderItem, Wishlist
 
 
@@ -25,19 +27,29 @@ class CartItemSerializer(serializers.ModelSerializer):
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
     item_count = serializers.SerializerMethodField()
+    subtotal = serializers.SerializerMethodField()
+    tax_total = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
 
     class Meta:
         model = Cart
-        fields = ("items", "item_count", "total")
+        fields = ("items", "item_count", "subtotal", "tax_total", "total")
 
     @extend_schema_field(serializers.IntegerField())
     def get_item_count(self, obj):
         return sum(i.quantity for i in obj.items.all())
 
     @extend_schema_field(serializers.DecimalField(max_digits=12, decimal_places=2))
+    def get_subtotal(self, obj):
+        return sum((money(i.product.price * i.quantity) for i in obj.items.all()), Decimal("0"))
+
+    @extend_schema_field(serializers.DecimalField(max_digits=12, decimal_places=2))
+    def get_tax_total(self, obj):
+        return sum((line_tax(i.product.price * i.quantity, i.product.tax_percent) for i in obj.items.all()), Decimal("0"))
+
+    @extend_schema_field(serializers.DecimalField(max_digits=12, decimal_places=2))
     def get_total(self, obj):
-        return sum((i.product.price * i.quantity for i in obj.items.all()), Decimal("0"))
+        return self.get_subtotal(obj) + self.get_tax_total(obj)
 
 
 class CartAddSerializer(serializers.Serializer):
@@ -86,7 +98,9 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class CheckoutSerializer(serializers.Serializer):
-    shipping_address = serializers.CharField(required=False, allow_blank=True)
+    shipping_address = serializers.CharField(min_length=10, max_length=500, trim_whitespace=True,
+        error_messages={"blank": "Please enter your delivery address.", "required": "Please enter your delivery address.",
+                        "min_length": "Please enter your full delivery address (house, street, city, PIN)."})
 
 
 class PaymentVerifySerializer(serializers.Serializer):

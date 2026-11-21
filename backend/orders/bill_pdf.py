@@ -166,13 +166,13 @@ def build_bill_pdf(bill):
         ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
     ]))
 
-    # --- Totals (tax is already inside the prices; shown split as CGST + SGST)
+    # --- Totals: Subtotal + tax (split CGST/SGST) = Total
     half = (order.tax_total / 2).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     other_half = order.tax_total - half
     tot_rows = [
-        ["Subtotal (excl. tax)", _rs(order.subtotal)],
-        ["CGST (included)", _rs(half)],
-        ["SGST (included)", _rs(other_half)],
+        ["Subtotal (before tax)", _rs(order.subtotal)],
+        ["CGST", _rs(half)],
+        ["SGST", _rs(other_half)],
     ]
     totals = Table(tot_rows, colWidths=[46 * mm, 34 * mm])
     totals.setStyle(TableStyle([
@@ -211,7 +211,7 @@ def build_bill_pdf(bill):
 
     thanks = Table(
         [[Paragraph("<b>Thank you for shopping with Vetri Bills!</b>", st("t", fontSize=10, leading=14, textColor=NAVY, fontName="Body-Bold")),
-          Paragraph("Prices include tax. Please check each product's expiry date before use. Keep this invoice for returns.", note)]],
+          Paragraph("Tax is added to the subtotal. Please check each product's expiry date before use. Keep this invoice for returns.", note)]],
         colWidths=[CONTENT_W * 0.38, CONTENT_W * 0.62],
     )
     thanks.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), GREEN_SOFT), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),

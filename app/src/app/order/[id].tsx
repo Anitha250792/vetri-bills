@@ -88,11 +88,11 @@ export default function OrderScreen() {
             ))}
             <View style={[styles.totals, styles.divider]}>
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Subtotal (excl. tax)</Text>
+                <Text style={styles.totalLabel}>Subtotal (before tax)</Text>
                 <Text style={styles.totalValue}>{inr(order.subtotal)}</Text>
               </View>
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Tax included</Text>
+                <Text style={styles.totalLabel}>Tax (CGST + SGST)</Text>
                 <Text style={styles.totalValue}>{inr(order.tax_total)}</Text>
               </View>
               <View style={styles.totalRow}>

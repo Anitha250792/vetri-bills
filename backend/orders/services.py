@@ -7,7 +7,7 @@ Flow:
                                  batches that expire first (FEFO), all in one transaction
   4. create_bill()             - PDF saved in the backend
 
-Prices are tax-inclusive (like an MRP tag): tax = line_total * rate / (100 + rate).
+Prices are BEFORE tax: tax = line_total * rate / 100 and total = subtotal + tax.
 Stock is taken when payment succeeds, not at checkout, so abandoned carts never block stock.
 """
 import base64
@@ -34,6 +34,11 @@ TWOPLACES = Decimal("0.01")
 
 def money(value):
     return Decimal(value).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+
+
+def line_tax(line_total, tax_percent):
+    """Tax added on top of a line's pre-tax amount."""
+    return money(Decimal(line_total) * Decimal(tax_percent) / 100)
 
 
 class CheckoutError(Exception):
@@ -73,21 +78,24 @@ def create_order_from_cart(user, shipping_address=""):
     # A new checkout replaces any older unpaid order.
     Order.objects.filter(user=user, status=Order.Status.PENDING).update(status=Order.Status.CANCELLED)
 
-    order = Order.objects.create(user=user, shipping_address=shipping_address or user.address)
-    total = tax_total = Decimal("0")
+    shipping_address = (shipping_address or "").strip()
+    if not shipping_address:
+        raise CheckoutError("Please enter your delivery address.")
+    order = Order.objects.create(user=user, shipping_address=shipping_address)
+    subtotal = tax_total = Decimal("0")
     for item in items:
         product = item.product
         line_total = money(product.price * item.quantity)
-        tax = money(line_total * product.tax_percent / (100 + product.tax_percent))
+        tax = line_tax(line_total, product.tax_percent)
         OrderItem.objects.create(
             order=order, product=product, product_name=product.name, unit_price=product.price,
             tax_percent=product.tax_percent, quantity=item.quantity, line_total=line_total,
         )
-        total += line_total
+        subtotal += line_total
         tax_total += tax
-    order.total = total
+    order.subtotal = subtotal
     order.tax_total = tax_total
-    order.subtotal = total - tax_total
+    order.total = subtotal + tax_total
     order.save(update_fields=["total", "tax_total", "subtotal"])
     return order
 

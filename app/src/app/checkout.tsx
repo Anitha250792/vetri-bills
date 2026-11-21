@@ -22,6 +22,7 @@ export default function Checkout() {
   const cart = useCart();
   const [address, setAddress] = useState(user?.address ?? '');
   const [busy, setBusy] = useState(false);
+  const [addressError, setAddressError] = useState('');
 
   if (!user) {
     return (
@@ -58,6 +59,12 @@ export default function Checkout() {
   }
 
   const pay = async () => {
+    // The address is mandatory: no payment starts without it.
+    if (address.trim().length < 10) {
+      setAddressError('Please enter your full delivery address (house no, street, city, PIN).');
+      return;
+    }
+    setAddressError('');
     setBusy(true);
     try {
       // 1. Turn the cart into an order and start the payment.
@@ -124,7 +131,15 @@ export default function Checkout() {
               </View>
             ))}
             <View style={[styles.line, styles.divider]}>
-              <Text style={[styles.lineName, { fontWeight: '800' }]}>Total (tax included)</Text>
+              <Text style={styles.lineName}>Subtotal (before tax)</Text>
+              <Text style={styles.lineTotal}>{inr(cart.data?.subtotal ?? 0)}</Text>
+            </View>
+            <View style={styles.line}>
+              <Text style={styles.lineName}>Tax</Text>
+              <Text style={styles.lineTotal}>+ {inr(cart.data?.tax_total ?? 0)}</Text>
+            </View>
+            <View style={[styles.line, styles.divider]}>
+              <Text style={[styles.lineName, { fontWeight: '800' }]}>Total to pay</Text>
               <Text style={styles.total}>{inr(cart.data?.total ?? 0)}</Text>
             </View>
           </View>
@@ -133,9 +148,13 @@ export default function Checkout() {
         <View>
           <SectionTitle>Delivery address</SectionTitle>
           <Field
-            label="Where should we deliver?"
+            label="Where should we deliver? *"
             value={address}
-            onChangeText={setAddress}
+            onChangeText={(t) => {
+              setAddress(t);
+              if (addressError) setAddressError('');
+            }}
+            error={addressError}
             multiline
             placeholder="House no, street, area, city, PIN"
           />

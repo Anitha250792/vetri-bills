@@ -21,7 +21,7 @@ from .serializers import (
 
 
 class CheckoutView(APIView):
-    """POST {shipping_address?}: turns the cart into an order and starts the payment."""
+    """POST {shipping_address} (required): turns the cart into an order and starts the payment."""
 
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = CheckoutSerializer
@@ -30,7 +30,7 @@ class CheckoutView(APIView):
         data = CheckoutSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         try:
-            order = services.create_order_from_cart(request.user, data.validated_data.get("shipping_address", ""))
+            order = services.create_order_from_cart(request.user, data.validated_data["shipping_address"])
             payment = services.create_payment(order)
         except services.CheckoutError as exc:
             return Response({"detail": exc.message, "items": exc.details}, status=status.HTTP_400_BAD_REQUEST)

@@ -83,11 +83,12 @@ export default function CartScreen() {
           </ScrollView>
           <View style={[styles.summary, shadow]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.sumLabel}>
-                Total ({cart.data.item_count} {cart.data.item_count === 1 ? 'item' : 'items'})
+              <Text style={styles.sumNote}>
+                Subtotal ({cart.data.item_count} {cart.data.item_count === 1 ? 'item' : 'items'}): {inr(cart.data.subtotal)}
               </Text>
+              <Text style={styles.sumNote}>Tax: + {inr(cart.data.tax_total)}</Text>
+              <Text style={styles.sumLabel}>Total</Text>
               <Text style={styles.sumValue}>{inr(cart.data.total)}</Text>
-              <Text style={styles.sumNote}>Tax included</Text>
             </View>
             <Button title="Checkout" icon="arrow-forward" onPress={() => router.push('/checkout')} style={{ minWidth: 150 }} />
           </View>

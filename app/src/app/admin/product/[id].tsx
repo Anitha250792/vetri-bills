@@ -272,7 +272,7 @@ export default function AdminProductScreen() {
         </View>
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Field label="Tax % (included)" value={tax} onChangeText={setTax} keyboardType="decimal-pad" placeholder="5" />
+            <Field label="Tax % (added on top of price)" value={tax} onChangeText={setTax} keyboardType="decimal-pad" placeholder="5" />
           </View>
           <View style={{ flex: 1 }}>
             <Field label="Low stock alert at" value={threshold} onChangeText={setThreshold} keyboardType="number-pad" placeholder="10" />

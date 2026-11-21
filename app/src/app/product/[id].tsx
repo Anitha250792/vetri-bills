@@ -80,7 +80,7 @@ export default function ProductScreen() {
               {p.mrp && Number(p.mrp) > Number(p.price) ? <Text style={styles.mrp}>{inr(p.mrp)}</Text> : null}
             </View>
             <Text style={styles.taxNote}>
-              {Number(p.tax_percent) > 0 ? `Inclusive of ${Number(p.tax_percent)}% tax` : 'No tax on this item'}
+              {Number(p.tax_percent) > 0 ? `+ ${Number(p.tax_percent)}% tax added at checkout` : 'No tax on this item'}
             </Text>
 
             <View style={styles.tagRow}>
